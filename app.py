@@ -1,29 +1,42 @@
 import os
 import pandas as pd
 import matplotlib.pyplot as plt
-import streamlit as plt_st
+import matplotlib.font_manager as fm
 import streamlit as st
 
 # 1. 页面基本配置
 st.set_page_config(page_title="定投模拟资产看板", layout="wide")
 
-# 2. 尝试自动配置中文字体（兼容 Linux/Colab/Windows/Mac 环境）
-plt.rcParams['axes.unicode_minus'] = False
-possible_fonts = ['SimHei', 'Arial Unicode MS', 'WenQuanYi Micro Hei', 'Microsoft YaHei']
-font_fixed = False
-for font in possible_fonts:
-    try:
-        plt.rcParams['font.sans-serif'] = [font]
-        # 尝试渲染一个字测试是否报错
-        fig = plt.figure()
-        plt.text(0, 0, '测试')
-        plt.close(fig)
-        font_fixed = True
-        break
-    except:
-        continue
+# ==================== ☁️ 云端字体直接外链加载（无需下载上传） ====================
+@st.cache_data # 使用 Streamlit 缓存，避免每次刷新页面都重复去网上抓字体
+def load_cloud_font():
+    import urllib.request
+    # 直接去标准开源镜像站拉取轻量化中文字体（仅不到 2MB，加载极快）
+    font_url = "https://github.com/anthonyfok/fonts-wqy-microhei/raw/master/wqy-microhei.ttc"
+    local_path = "/tmp/wqy-microhei.ttc" # 借用 Linux 系统的临时缓存目录
+    
+    if not os.path.exists(local_path):
+        try:
+            urllib.request.urlretrieve(font_url, local_path)
+        except Exception:
+            return None
+    return local_path
 
-# 3. 检查并读取 CSV 涨跌幅数据
+font_path = load_cloud_font()
+
+if font_path and os.path.exists(font_path):
+    # 强制让 Matplotlib 认识这个云端抓下来的字体
+    fm.fontManager.addfont(font_path)
+    prop = fm.FontProperties(fname=font_path)
+    plt.rcParams['font.sans-serif'] = [prop.get_name()]
+else:
+    # 备用方案
+    plt.rcParams['font.sans-serif'] = ['sans-serif']
+
+plt.rcParams['axes.unicode_minus'] = False  # 正常显示负号
+# =====================================================================
+
+# 2. 检查并读取 CSV 涨跌幅数据
 csv_filename = 'annual_returns.csv'
 if not os.path.exists(csv_filename):
     st.error(f"未找到数据文件：{csv_filename}，请确保该 CSV 文件与 app.py 在同一目录下。")
@@ -31,8 +44,8 @@ if not os.path.exists(csv_filename):
 
 df_ret = pd.read_csv(csv_filename)
 
-# 4. 后台核心逻辑计算：通过涨跌幅生成资产终值演变表
-ANNUAL_INVESTMENT = 10400  # 每年初定投金额
+# 3. 后台核心逻辑计算：通过涨跌幅生成资产终值演变表
+ANNUAL_INVESTMENT = 10400  
 
 init_row = {
     '年份': 0, '累计总本金': 0, 
@@ -60,14 +73,12 @@ for idx, row in df_ret.iterrows():
     r_low_vol = row['低波红利'] / 100.0
     r_deposit = row['银行存款'] / 100.0
     
-    # 纯单资产定投复利
     v_nasdaq = (v_nasdaq + ANNUAL_INVESTMENT) * (1 + r_nasdaq)
     v_kc50 = (v_kc50 + ANNUAL_INVESTMENT) * (1 + r_kc50)
     v_gold = (v_gold + ANNUAL_INVESTMENT) * (1 + r_gold)
     v_low_vol = (v_low_vol + ANNUAL_INVESTMENT) * (1 + r_low_vol)
     v_deposit = (v_deposit + ANNUAL_INVESTMENT) * (1 + r_deposit)
     
-    # 8:2 动态平衡组合复利（每年末强制调仓回 8:2）
     v_82_nasdaq_gold = (v_82_nasdaq_gold + ANNUAL_INVESTMENT) * (0.8 * (1 + r_nasdaq) + 0.2 * (1 + r_gold))
     v_82_kc50_gold = (v_82_kc50_gold + ANNUAL_INVESTMENT) * (0.8 * (1 + r_kc50) + 0.2 * (1 + r_gold))
     
@@ -80,15 +91,15 @@ for idx, row in df_ret.iterrows():
 
 df_evo = pd.DataFrame(evolution_rows)
 
-# 5. 定义统一的基础资产颜色映射
+# 4. 定义统一的基础资产颜色映射
 color_map = {
     '纯纳斯达克100': '#1f77b4',
     '纯科创50': '#d62728',
     '纯黄金': '#bcbd22',
     '纯低波红利': '#2ca02c',
     '纯银行存款': '#7f7f7f',
-    '8:2纳指黄金': '#9400D3',  # 显眼的深紫色
-    '8:2科创黄金': '#FF7F0E'   # 显眼的亮橙色
+    '8:2纳指黄金': '#9400D3',  
+    '8:2科创黄金': '#FF7F0E'   
 }
 
 # ==================== 图表 1：每年涨跌幅柱状图 ====================
@@ -116,23 +127,19 @@ plt.xticks(range(2026, 2066, 2))
 plt.xlabel('年份', fontsize=12)
 plt.tight_layout(rect=[0, 0, 1, 0.95])
 
-# 在 Streamlit 展示图 1
 st.pyplot(fig1)
 
-st.write("---") # 分割线
+st.write("---") 
 
 # ==================== 图表 2：40年定投总资产终值演变折线图 ====================
 fig2, ax2 = plt.subplots(figsize=(14, 8))
 
-# 绘制基准本金线
 ax2.plot(df_evo['年份'], df_evo['累计总本金'], label='累计总本金', color='#b0b0b0', linestyle='--', linewidth=1.5)
 
-# 循环绘制所有资产曲线
 for column in color_map.keys():
     linewidth = 2.6 if '8:2' in column else 1.8
     ax2.plot(df_evo['年份'], df_evo[column], label=column, color=color_map[column], linewidth=linewidth)
 
-# 精准终点右侧数值标签
 final_year = 2065
 final_values = {
     '8:2纳指黄金': (1926455, '#9400D3'),
@@ -158,5 +165,4 @@ ax2.legend(loc='upper left', frameon=True, facecolor='white', edgecolor='none', 
 
 plt.tight_layout()
 
-# 在 Streamlit 展示图 2
 st.pyplot(fig2)

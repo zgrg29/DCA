@@ -1,5 +1,3 @@
-这是一份根据你的要求修改完成的完整代码。我已将图表 2 中硬编码的终值标注逻辑，替换为基于 df_evo 数据动态计算和排序的逻辑，同时保留了你原有的所有非相关代码。
-```python
 import os
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -191,5 +189,3 @@ st.table(df_summary.style.format({
     "最终资产金额 (元)": "{:,.0f}",
     "相比投入资金增值 (%)": "{:,.0f}%"
 }))
-
-```

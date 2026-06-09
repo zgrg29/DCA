@@ -188,3 +188,58 @@ st.table(df_summary.style.format({
     "最终资产金额 (元)": "{:,.0f}",
     "相比投入资金增值 (%)": "{:,.0f}%"
 }))
+
+# ==================== 新增逻辑：一次性投入 100万，不进行定投 ====================
+INITIAL_LUMP_SUM = 1000000  # 初始投入100万
+
+# 初始化一次性投入的各项资产变量
+v_lump_nasdaq = INITIAL_LUMP_SUM
+v_lump_kc50 = INITIAL_LUMP_SUM
+v_lump_gold = INITIAL_LUMP_SUM
+v_lump_low_vol = INITIAL_LUMP_SUM
+v_lump_deposit = INITIAL_LUMP_SUM
+v_lump_82_nasdaq_gold = INITIAL_LUMP_SUM
+v_lump_82_kc50_gold = INITIAL_LUMP_SUM
+
+# 循环计算一次性投入的终值
+for idx, row in df_ret.iterrows():
+    r_nasdaq = row['纳斯达克100'] / 100.0
+    r_kc50 = row['科创50'] / 100.0
+    r_gold = row['黄金'] / 100.0
+    r_low_vol = row['低波红利'] / 100.0
+    r_deposit = row['银行存款'] / 100.0
+    
+    v_lump_nasdaq *= (1 + r_nasdaq)
+    v_lump_kc50 *= (1 + r_kc50)
+    v_lump_gold *= (1 + r_gold)
+    v_lump_low_vol *= (1 + r_low_vol)
+    v_lump_deposit *= (1 + r_deposit)
+    v_lump_82_nasdaq_gold *= (0.8 * (1 + r_nasdaq) + 0.2 * (1 + r_gold))
+    v_lump_82_kc50_gold *= (0.8 * (1 + r_kc50) + 0.2 * (1 + r_gold))
+
+# 将结果放入字典以便展示
+lump_sum_results = {
+    '纯纳斯达克100': v_lump_nasdaq,
+    '纯科创50': v_lump_kc50,
+    '纯黄金': v_lump_gold,
+    '纯低波红利': v_lump_low_vol,
+    '纯银行存款': v_lump_deposit,
+    '8:2纳指黄金': v_lump_82_nasdaq_gold,
+    '8:2科创黄金': v_lump_82_kc50_gold
+}
+
+# ==================== 新增：展示一次性投入表格 ====================
+st.write("---")
+st.subheader("💰 一次性投入 100万元（无定投）资产终值表格")
+
+lump_summary_data = []
+for asset, val in lump_sum_results.items():
+    lump_summary_data.append({
+        "资产名称": asset,
+        "40年后资产金额 (元)": val
+    })
+
+df_lump_summary = pd.DataFrame(lump_summary_data)
+st.table(df_lump_summary.style.format({
+    "40年后资产金额 (元)": "{:,.0f}"
+}))

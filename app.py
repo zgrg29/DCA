@@ -166,3 +166,33 @@ ax2.legend(loc='upper left', frameon=True, facecolor='white', edgecolor='none', 
 plt.tight_layout()
 
 st.pyplot(fig2)
+
+# ==================== 新增：资产终值与增值分析表格 ====================
+st.write("---")
+st.subheader("📊 最终资产表现总结（竖向表格）")
+
+# 获取最后一年（2065年）的数据行
+last_row = df_evo.iloc[-1]
+total_principal = last_row['累计总本金']
+
+# 构建展示数据
+summary_data = []
+for asset in color_map.keys():
+    final_value = last_row[asset]
+    growth = final_value - total_principal
+    summary_data.append({
+        "资产名称": asset,
+        "最终资产金额 (元)": final_value,
+        "相比投入资金增值 (元)": growth
+    })
+
+# 转换为 DataFrame 用于显示
+df_summary = pd.DataFrame(summary_data)
+
+# 使用 Streamlit 的表格组件显示
+st.table(df_summary.style.format({
+    "最终资产金额 (元)": "{:,.0f}",
+    "相比投入资金增值 (元)": "{:,.0f}"
+}))
+
+st.info(f"注：累计投入本金为 {total_principal:,.0f} 元。表格已按上述列生成，方便截屏。")

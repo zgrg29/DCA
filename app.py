@@ -134,15 +134,19 @@ st.write("---")
 # ==================== 图表 2：40年定投总资产终值演变折线图 ====================
 fig2, ax2 = plt.subplots(figsize=(14, 8))
 
+# 过滤掉初始的0年份，获取实际年份范围
+valid_df = df_evo[df_evo['年份'] > 0]
+start_year = int(valid_df['年份'].min())
+final_year = int(valid_df['年份'].max())
+
 ax2.plot(df_evo['年份'], df_evo['累计总本金'], label='累计总本金', color='#b0b0b0', linestyle='--', linewidth=1.5)
 
 for column in color_map.keys():
     linewidth = 2.6 if '8:2' in column else 1.8
     ax2.plot(df_evo['年份'], df_evo[column], label=column, color=color_map[column], linewidth=linewidth)
 
-# 获取最后一年数据并自动排序标注，无需硬编码
+# 动态标注逻辑
 last_row = df_evo.iloc[-1]
-final_year = last_row['年份']
 final_assets = {col: last_row[col] for col in color_map.keys()}
 sorted_assets = sorted(final_assets.items(), key=lambda x: x[1], reverse=True)
 
@@ -153,8 +157,8 @@ for label, val in sorted_assets:
 ax2.set_title('40年定投总资产终值演变折线图', fontsize=16, fontweight='bold', pad=15)
 ax2.set_xlabel('年份', fontsize=11)
 ax2.set_ylabel('资产总额 (元)', fontsize=11)
-ax2.set_xlim(df_evo['年份'].min(), final_year + 5)
-ax2.set_xticks(range(df_evo['年份'].min(), final_year + 1, 2))
+ax2.set_xlim(start_year - 1, final_year + 5)
+ax2.set_xticks(range(start_year, final_year + 1, 2))
 ax2.get_yaxis().set_major_formatter(plt.FuncFormatter(lambda x, loc: "{:,}元".format(int(x))))
 ax2.grid(True, linestyle=':', alpha=0.6)
 ax2.legend(loc='upper left', frameon=True, facecolor='white', edgecolor='none', fontsize=11)
@@ -166,11 +170,9 @@ st.pyplot(fig2)
 st.write("---")
 st.subheader("📊 最终资产表现总结（竖向表格）")
 
-# 获取最后一年（2065年）的数据行
 last_row = df_evo.iloc[-1]
 total_principal = last_row['累计总本金']
 
-# 构建展示数据
 summary_data = []
 for asset in color_map.keys():
     final_value = last_row[asset]
@@ -181,10 +183,7 @@ for asset in color_map.keys():
         "相比投入资金增值 (%)": growth
     })
 
-# 转换为 DataFrame 用于显示
 df_summary = pd.DataFrame(summary_data)
-
-# 使用 Streamlit 的表格组件显示
 st.table(df_summary.style.format({
     "最终资产金额 (元)": "{:,.0f}",
     "相比投入资金增值 (%)": "{:,.0f}%"
